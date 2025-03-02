@@ -49,7 +49,7 @@ This Flask application fetches GitHub Copilot metrics data daily and stores it i
    # App settings
    FLASK_APP=app.py
    FLASK_ENV=development
-   PORT=5000
+   PORT=8000
    ```
 
 ### Running the Application

@@ -40,6 +40,19 @@ try:
 except Exception as e:
     logger.error(f"Error initializing Azure Blob Storage: {str(e)}")
 
+# a function to verify the requst header
+# the header should contain Authorization token
+# the token should be the same as the one in the .env file
+def verify_request_header():
+    """
+    Verify the request header for Authorization token.
+    """
+    auth_token = request.headers.get("Authorization")
+    if not auth_token or auth_token != f"Bearer {GITHUB_API_TOKEN}":
+        logger.error("Unauthorized request: Invalid or missing Authorization token.")
+        return False
+    return True
+
 def fetch_copilot_metrics():
     """
     Fetch Copilot metrics from GitHub API and store in Azure Blob Storage
@@ -49,7 +62,7 @@ def fetch_copilot_metrics():
         
         # GitHub API headers
         headers = {
-            "Authorization": f"token {GITHUB_API_TOKEN}",
+            "Authorization": f"Bearer {GITHUB_API_TOKEN}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28"
         }
@@ -120,6 +133,11 @@ def schedule_metrics_fetch():
 # if end_date is provided while start_date is not provided, then return data from the beginning to that date
 @app.route('/api/metrics', methods=['GET'])
 def get_metrics():
+    # Add authentication check
+    if not verify_request_header():
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    fetch_copilot_metrics()
     """
     Get metrics data for a given date range:
     - No dates: return all data
@@ -203,6 +221,10 @@ def trigger_fetch():
     """
     Manually trigger metrics fetch
     """
+    # Add authentication check
+    if not verify_request_header():
+        return jsonify({"error": "Unauthorized"}), 401
+        
     try:
         fetch_copilot_metrics()
         return jsonify({"status": "success", "message": "Metrics fetch triggered"})
@@ -211,6 +233,7 @@ def trigger_fetch():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
+
     # Start scheduler in a separate thread
     scheduler_thread = threading.Thread(target=schedule_metrics_fetch, daemon=True)
     scheduler_thread.start()
